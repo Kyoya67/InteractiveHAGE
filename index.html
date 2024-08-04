@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGB Shift Effect with Three.js</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // シーン、カメラ、レンダラーの設定
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(Math.max(window.innerWidth, 375), window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // テクスチャの読み込み
+        const texture = new THREE.TextureLoader().load('hage.jpg', (tex) => {
+            updatePlaneGeometry(tex);
+        });
+
+        // 平面ジオメトリの作成関数
+        let geometry;
+        function updatePlaneGeometry(texture) {
+            if (geometry) geometry.dispose();
+            const aspect = texture.image.width / texture.image.height;
+            geometry = new THREE.PlaneGeometry(aspect, 1);
+            mesh.geometry = geometry;
+        }
+
+        // カスタムシェーダーマテリアルの作成
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                uTexture: { value: texture },
+                uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+                uAmount: { value: 0.0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D uTexture;
+                uniform vec2 uMouse;
+                uniform float uAmount;
+                varying vec2 vUv;
+
+                void main() {
+                    vec2 distortion = vec2(
+                        sin(vUv.y * 10.0 + uMouse.x) * 1.3,
+                        cos(vUv.x * 10.0 + uMouse.y) * 1.3
+                    ) * uAmount;
+
+                    vec4 redChannel = texture2D(uTexture, vUv + distortion * 0.1);
+                    vec4 greenChannel = texture2D(uTexture, vUv);
+                    vec4 blueChannel = texture2D(uTexture, vUv - distortion * 0.1);
+
+                    gl_FragColor = vec4(redChannel.r, greenChannel.g, blueChannel.b, 1.0);
+                }
+            `
+        });
+
+        // メッシュの作成とシーンへの追加
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+        scene.add(mesh);
+
+        camera.position.z = 1;
+
+        // マウス位置の更新
+        let mouse = new THREE.Vector2();
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // マウス位置とエフェクト強度の更新
+            material.uniforms.uMouse.value = mouse;
+            material.uniforms.uAmount.value = 0.3;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // ウィンドウリサイズ対応
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>
