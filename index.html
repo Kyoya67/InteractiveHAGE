@@ -83,9 +83,19 @@
 
         // マウス位置の更新
         let mouse = new THREE.Vector2();
+        function updateMousePosition(x, y) {
+            mouse.x = (x / window.innerWidth) * 2 - 1;
+            mouse.y = -(y / window.innerHeight) * 2 + 1;
+        }
+
         window.addEventListener('mousemove', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            updateMousePosition(event.clientX, event.clientY);
+        });
+
+        // タッチ位置の更新
+        window.addEventListener('touchmove', (event) => {
+            const touch = event.touches[0];
+            updateMousePosition(touch.clientX, touch.clientY);
         });
 
         // アニメーションループ
